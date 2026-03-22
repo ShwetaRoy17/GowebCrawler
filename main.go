@@ -6,6 +6,11 @@ import (
 )
 
 func main() {
-	fetcher.Fetch()
+	body, err := fetcher.Get("https://www.google.com")
+	if err != nil {
+		println("Error fetching the data:", err.Error())
+		return
+	}
+	println("Fetched data:", body)
 	parser.Parse()
 }
