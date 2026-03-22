@@ -1,10 +1,10 @@
 package fetcher
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"time"
-	"errors"
 )
 
 
@@ -13,22 +13,21 @@ var client = &http.Client{
 }
 
 
-func Get(url string)(string, error) {
+func Fetch(url string)(string, error) {
 	res, err := client.Get(url)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Network Error %w",err)
 	}
-	if res.StatusCode == 200 {
-		defer res.Body.Close()
+	
+	if res.StatusCode == http.StatusOK {
 		body,err := io.ReadAll(res.Body)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Error reading body :%w",err)
 		}
 		return string(body), nil
 	}
-	if res.StatusCode == 400 {
-		return "",errors.New("http error: bad request")
+
+	return "",fmt.Errorf("http error: bad request %d",res.StatusCode)
 	
-	}
-	return "", nil
 }
+
