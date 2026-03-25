@@ -17,7 +17,7 @@ var (
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start the web crawler",
+	Short: "Starts the web crawler",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := run(seedUrl, depth, concurrency); err != nil {
 			return fmt.Errorf("failed to start crawler: %w", err)
@@ -37,11 +37,11 @@ func run(seed string, depth int, concurrency int) error {
 	if err != nil {
 		return fmt.Errorf("error parsing url %s:%w",seed, err)
 	}
-	count, err := parser.Parse(parsedUrl, body)
+	links, err := parser.Parse(parsedUrl, body)
 	if err != nil {
 		return fmt.Errorf("error parsing body %s:%w",seed, err)
 	}
-	fmt.Printf("Found %d links on %s\n", count, seed)
+	fmt.Printf("Found %d links on %s\n", len(links), seed)
 	return nil
 }
 
