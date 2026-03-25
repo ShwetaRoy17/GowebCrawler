@@ -24,6 +24,7 @@ func Fetch(url string)(string, error) {
 		if err != nil {
 			return "", fmt.Errorf("Error reading body :%w",err)
 		}
+		defer res.Body.Close()
 		return string(body), nil
 	}
 
