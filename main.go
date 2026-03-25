@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ShwetaRoy17/GowebCrawler/fetcher"
-	"github.com/ShwetaRoy17/GowebCrawler/parser"
+	"github.com/ShwetaRoy17/GowebCrawler/internal/fetcher"
+	"github.com/ShwetaRoy17/GowebCrawler/internal/parser"
 )
 
 func h1(urlString string){
