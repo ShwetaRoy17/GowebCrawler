@@ -20,12 +20,12 @@ var startCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Starts the web crawler",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		cfg := config.Config{
-			SeedUrl: seedUrl,
-			MaxDepth: depth,
-			Concurrency: concurrency,
-		}
-		return run(cfg)
+		cfg, err := config.Load()
+		 if err != nil {
+			return fmt.Errorf("configuration loading failed :%w",err)
+		 }
+		 cfg.SeedUrl = seedUrl
+		return run(*cfg)
 	},
 }
 
@@ -56,9 +56,9 @@ func run(cfg config.Config) error {
 		}
 		links,err := parser.Parse(parsedUrl, body)
 		if err != nil {
-			return fmt.Errorf("failed to parse links %s",&parsedUrl)
+			return fmt.Errorf("failed to parse links %w",err)
 		}
-		fmt.Printf("crawled: %s, depth: %d, found:%d\n", urlp,depth, len(links))
+		fmt.Printf("crawled: %s, depth: %d, concurrency:%d\n", urlp,cfg.MaxDepth, cfg.Concurrency)
 		var wg sync.WaitGroup
 		sem := make(chan struct{}, cfg.Concurrency)
 		for _, link := range links {
