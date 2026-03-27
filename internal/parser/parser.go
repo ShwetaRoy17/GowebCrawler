@@ -3,10 +3,9 @@ package parser
 import (
 	"net/url"
 	"strings"
+
 	"golang.org/x/net/html"
 )
-
-
 
 type Link struct {
 	URL  string
@@ -73,7 +72,7 @@ func resolveURL(base *url.URL, href string) string {
 }
 
 func checkValidUrl(url string) bool {
-	if strings.HasPrefix(url, "mailto:") || strings.HasPrefix(url, "tel:") || strings.HasPrefix(url,"data:") || strings.HasPrefix(url,"ftp:") {
+	if strings.HasPrefix(url, "mailto:") || strings.HasPrefix(url, "tel:") || strings.HasPrefix(url, "data:") || strings.HasPrefix(url, "ftp:") {
 		return false
 	}
 	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
