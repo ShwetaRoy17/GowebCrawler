@@ -6,7 +6,8 @@ package config
 // )
 
 type Config struct {
-	seedUrls []string `mapstructure:"seed_urls"`
+	SeedUrl string `mapstructure:"seedurl"`
 	MaxDepth int `mapstructure:"max_depth"`
 	Concurrency int `mapstructure:"concurrency"`
 }
+
