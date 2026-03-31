@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/url"
+	"time"
 	"sync"
 
 	"github.com/spf13/cobra"
@@ -26,12 +27,17 @@ var startCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("configuration loading failed :%w", err)
 		}
+		fetcher := fetcher.NewFetcher(fetcher.Options{
+			Timeout:   10 * time.Second,
+			UserAgent: "cfg.UserAgent",
+			SkipTLS:   true,
+		})
 		cfg.SeedUrl = seedUrl
-		return run(*cfg)
+		return run(*cfg,fetcher)
 	},
 }
 
-func run(cfg config.Config) error {
+func run(cfg config.Config, fetcher *fetcher.Fetcher) error {
 	visited := make(map[string]bool)
 	var mu sync.Mutex
 	var crawlerF func(urlp string, currd int) error
