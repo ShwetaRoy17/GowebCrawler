@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"time"
+	"errors"
 	"crypto/tls"
 )
 
@@ -21,6 +22,14 @@ type Options struct {
 type Fetcher struct {
     client    *http.Client
     userAgent string
+}
+
+type HTTPError struct {
+	StatusCode int
+}
+
+func (e *HTTPError) Error() (string,*HTTPError) {
+  return "", &HTTPError{StatusCode: e.StatusCode}
 }
 
 func NewFetcher(options Options) *Fetcher {
@@ -67,5 +76,24 @@ func(f *Fetcher) Fetch(url string) (string, error) {
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}
 	return string(body), nil
+
+}
+
+func (f *Fetcher) FetchWithRetry(url string, retries int) (string, error) {
+	var lastErr error
+	for attempt := 0;attempt<retries;attempt++ {
+		var body string
+		body, lastErr:= f.Fetch(url)
+		if lastErr == nil {
+			return body,nil
+		}
+		var httpErr *HTTPError
+		if errors.As(lastErr, &httpErr){
+			return "",lastErr
+		}
+		wait:= time.Duration(1<<attempt)*time.Second
+		time.Sleep(wait)
+	}
+	return "",fmt.Errorf("all %d attempts failed: %w",retries,lastErr)
 
 }

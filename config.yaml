@@ -1,2 +1,3 @@
 max_depth: 2
 concurrency: 6
+user_agent: "goWebC/1.0 (+https://github.com/ShwetaRoy17/GowebCrawler)"

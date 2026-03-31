@@ -29,7 +29,7 @@ var startCmd = &cobra.Command{
 		}
 		fetcher := fetcher.NewFetcher(fetcher.Options{
 			Timeout:   10 * time.Second,
-			UserAgent: "cfg.UserAgent",
+			UserAgent: cfg.UserAgent,
 			SkipTLS:   true,
 		})
 		cfg.SeedUrl = seedUrl
@@ -53,7 +53,7 @@ func run(cfg config.Config, fetcher *fetcher.Fetcher) error {
 		visited[urlp] = true
 		mu.Unlock()
 
-		body, err := fetcher.Fetch(urlp)
+		body, err := fetcher.FetchWithRetry(urlp,3)
 		if err != nil {
 			return fmt.Errorf("failed to fetch %s: %w", urlp, err)
 		}
