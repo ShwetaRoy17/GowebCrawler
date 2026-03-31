@@ -11,6 +11,17 @@ var client = &http.Client{
 	Timeout: time.Second * 10,
 }
 
+type Options struct {
+    Timeout   time.Duration
+    UserAgent string
+    SkipTLS   bool
+}
+
+type Fetcher struct {
+    client    *http.Client
+    userAgent string
+}
+
 func Fetch(url string) (string, error) {
 	res, err := client.Get(url)
 	if err != nil {
