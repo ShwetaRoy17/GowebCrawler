@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"net/url"
-	"time"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/time/rate"
 
 	"github.com/ShwetaRoy17/GowebCrawler/internal/config"
 	"github.com/ShwetaRoy17/GowebCrawler/internal/fetcher"
@@ -31,9 +32,11 @@ var startCmd = &cobra.Command{
 			Timeout:   10 * time.Second,
 			UserAgent: cfg.UserAgent,
 			SkipTLS:   true,
+			RateLimit: rate.Limit(cfg.RateLimit),
+			Burst:     cfg.Burst,
 		})
 		cfg.SeedUrl = seedUrl
-		return run(*cfg,fetcher)
+		return run(*cfg, fetcher)
 	},
 }
 
@@ -53,7 +56,7 @@ func run(cfg config.Config, fetcher *fetcher.Fetcher) error {
 		visited[urlp] = true
 		mu.Unlock()
 
-		body, err := fetcher.FetchWithRetry(urlp,3)
+		body, err := fetcher.FetchWithRetry(urlp, 3)
 		if err != nil {
 			return fmt.Errorf("failed to fetch %s: %w", urlp, err)
 		}

@@ -11,7 +11,9 @@ type Config struct {
 	SeedUrl     string `mapstructure:"seedurl"`
 	MaxDepth    int    `mapstructure:"max_depth"`
 	Concurrency int    `mapstructure:"concurrency"`
-	UserAgent  string `mapstructure:"user_agent"`
+	UserAgent   string `mapstructure:"user_agent"`
+	RateLimit   int    `mapstructure:"rate_limit"`
+	Burst       int    `mapstructure:"burst"`
 }
 
 func Load() (*Config, error) {
@@ -20,7 +22,9 @@ func Load() (*Config, error) {
 	viper.AddConfigPath(".")
 	viper.SetDefault("max_depth", 3)
 	viper.SetDefault("concurrency", 10)
-	viper.SetDefault("user_agent","goWebC/1.0")
+	viper.SetDefault("user_agent", "goWebC/1.0")
+	viper.SetDefault("rate_limit", 1)
+	viper.SetDefault("burst", 1)
 
 	if err := viper.ReadInConfig(); err != nil {
 		if !errors.Is(err, viper.ConfigFileNotFoundError{}) {
