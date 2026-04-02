@@ -147,4 +147,24 @@ func (f *Fetcher) getRobotsData(domain string) (*robotstxt.RobotsData, error) {
 	return data, nil
 }
 
-
+func (f *Fetcher) fetchRaw(url string) (string, error) {
+    req, err := http.NewRequest(http.MethodGet, url, nil)
+    if err != nil {
+        return "", fmt.Errorf("creating request: %w", err)
+    }
+    req.Header.Set("User-Agent", f.userAgent)
+    res, err := f.client.Do(req)
+    if err != nil {
+        return "", fmt.Errorf("network error: %w", err)
+    }
+    defer func() {
+        if err := res.Body.Close(); err != nil {
+            fmt.Printf("error closing body: %v\n", err)
+        }
+    }()
+    body, err := io.ReadAll(res.Body)
+    if err != nil {
+        return "", fmt.Errorf("reading body: %w", err)
+    }
+    return string(body), nil
+}
