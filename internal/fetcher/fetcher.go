@@ -110,7 +110,7 @@ func (f *Fetcher) FetchWithRetry(url string, retries int) (string, error) {
 	var lastErr error
 	for attempt := 0; attempt < retries; attempt++ {
 		var body string
-		body, lastErr := f.Fetch(url)
+		body, lastErr = f.Fetch(url)
 		if lastErr == nil {
 			return body, nil
 		}
@@ -133,7 +133,7 @@ func (f *Fetcher) getRobotsData(domain string) (*robotstxt.RobotsData, error) {
 	}
 	f.robotsMu.Unlock()
 	robotsURL := "https://" + domain + "/robots.txt"
-	body, err := f.Fetch(robotsURL)
+	body, err := f.fetchRaw(robotsURL)
 	if err != nil {
 		return robotstxt.FromStatusAndBytes(200, []byte(""))
 	}
@@ -148,23 +148,23 @@ func (f *Fetcher) getRobotsData(domain string) (*robotstxt.RobotsData, error) {
 }
 
 func (f *Fetcher) fetchRaw(url string) (string, error) {
-    req, err := http.NewRequest(http.MethodGet, url, nil)
-    if err != nil {
-        return "", fmt.Errorf("creating request: %w", err)
-    }
-    req.Header.Set("User-Agent", f.userAgent)
-    res, err := f.client.Do(req)
-    if err != nil {
-        return "", fmt.Errorf("network error: %w", err)
-    }
-    defer func() {
-        if err := res.Body.Close(); err != nil {
-            fmt.Printf("error closing body: %v\n", err)
-        }
-    }()
-    body, err := io.ReadAll(res.Body)
-    if err != nil {
-        return "", fmt.Errorf("reading body: %w", err)
-    }
-    return string(body), nil
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("User-Agent", f.userAgent)
+	res, err := f.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("network error: %w", err)
+	}
+	defer func() {
+		if err := res.Body.Close(); err != nil {
+			fmt.Printf("error closing body: %v\n", err)
+		}
+	}()
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading body: %w", err)
+	}
+	return string(body), nil
 }

@@ -34,7 +34,7 @@ func Parse(base *url.URL, body string) ([]Link, error) {
 				if absURL := resolveURL(base, href); absURL != "" {
 
 					links = append(links, Link{
-						URL:  href,
+						URL:  absURL,
 						Text: strings.TrimSpace(nodeText(n)),
 					})
 				}
