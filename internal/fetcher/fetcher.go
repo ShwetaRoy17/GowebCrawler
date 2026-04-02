@@ -7,8 +7,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
+	"net/url"
+
+	"github.com/temoto/robotstxt"
 	"golang.org/x/time/rate"
 )
 
@@ -21,9 +25,11 @@ type Options struct {
 }
 
 type Fetcher struct {
-	client    *http.Client
-	userAgent string
-	limiter   *rate.Limiter
+	client      *http.Client
+	userAgent   string
+	limiter     *rate.Limiter
+	robotsCache map[string]*robotstxt.RobotsData
+	robotsMu    sync.Mutex
 }
 
 type HTTPError struct {
@@ -45,17 +51,33 @@ func NewFetcher(options Options) *Fetcher {
 		Timeout:   options.Timeout,
 	}
 	return &Fetcher{
-		client:    client,
-		userAgent: options.UserAgent,
-		limiter:   rate.NewLimiter(options.RateLimit, options.Burst),
+		client:      client,
+		userAgent:   options.UserAgent,
+		limiter:     rate.NewLimiter(options.RateLimit, options.Burst),
+		robotsCache: make(map[string]*robotstxt.RobotsData),
+		robotsMu:    sync.Mutex{},
 	}
 }
 
-func (f *Fetcher) Fetch(url string) (string, error) {
+func (f *Fetcher) Fetch(urlS string) (string, error) {
 	if err := f.limiter.Wait(context.Background()); err != nil {
 		return "", fmt.Errorf("rate limit error: %w", err)
 	}
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+
+	parsedURL, err := url.Parse(urlS)
+	if err != nil {
+		return "", fmt.Errorf("error while parsing url : %w", err)
+	}
+
+	robots, err := f.getRobotsData(parsedURL.Host)
+	if err != nil {
+		return "", fmt.Errorf("error fetching robots data: %w", err)
+	}
+	if !robots.TestAgent(parsedURL.Path, f.userAgent) {
+		return "", fmt.Errorf("fetching disalloed or blocked: %s", parsedURL.Path)
+	}
+
+	req, err := http.NewRequest(http.MethodGet, urlS, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -102,3 +124,27 @@ func (f *Fetcher) FetchWithRetry(url string, retries int) (string, error) {
 	return "", fmt.Errorf("all %d attempts failed: %w", retries, lastErr)
 
 }
+
+func (f *Fetcher) getRobotsData(domain string) (*robotstxt.RobotsData, error) {
+	f.robotsMu.Lock()
+	if data, ok := f.robotsCache[domain]; ok {
+		f.robotsMu.Unlock()
+		return data, nil
+	}
+	f.robotsMu.Unlock()
+	robotsURL := "https://" + domain + "/robots.txt"
+	body, err := f.Fetch(robotsURL)
+	if err != nil {
+		return robotstxt.FromStatusAndBytes(200, []byte(""))
+	}
+	data, err := robotstxt.FromBytes([]byte(body))
+	if err != nil {
+		return robotstxt.FromStatusAndBytes(200, []byte(nil))
+	}
+	f.robotsMu.Lock()
+	f.robotsCache[domain] = data
+	f.robotsMu.Unlock()
+	return data, nil
+}
+
+
