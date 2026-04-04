@@ -5,6 +5,9 @@ import (
 	"time"
 	"log"
 	"sync/atomic"
+	"compress/gzip"
+	"fmt"
+	"io"
 )
 
 
@@ -28,11 +31,23 @@ type MetricsMiddleware struct {
 	metrics *Metrics
 }
 
+type CompressionMiddleware struct {
+	next Doer
+}
+
+func NewLoggingMiddleware(next Doer) *LoggingMiddleware {
+	return &LoggingMiddleware{next: next}
+}
+
 func NewMetricsMiddleware(next Doer) *MetricsMiddleware{
 	return &MetricsMiddleware{
 		next : next,
 		metrics: &Metrics{},
 	}
+}
+
+func NewCompressionMiddleware(next Doer) *CompressionMiddleware{
+	return &CompressionMiddleware{next: next}
 }
 
 func (m* MetricsMiddleware) Do(req *http.Request) (*http.Response, error){
@@ -62,7 +77,20 @@ func (m *LoggingMiddleware) Do(req *http.Request) (*http.Response, error){
 
 }
 
-func NewLoggingMiddleware(next Doer) *LoggingMiddleware {
-	return &LoggingMiddleware{next: next}
+func (c *CompressionMiddleware) Do(req *http.Request) (*http.Response, error){
+	req.Header.Set("Accept-Encoding","gzip")
+	res, err := c.next.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if res.Header.Get("Content-Encoding") == "gzip" {
+		reader, err := gzip.NewReader(res.Body)
+		if err != nil {
+			return nil, fmt.Errorf("creating gzip reader: %w",err)
+		}
+		res.Body = io.NopCloser(reader)
+	}
+	return res, nil
 }
+
 
