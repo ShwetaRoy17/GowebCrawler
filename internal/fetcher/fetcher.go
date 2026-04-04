@@ -52,6 +52,7 @@ func NewFetcher(options Options) *Fetcher {
 		Transport: transport,
 		Timeout:   options.Timeout,
 	}
+	
 	return &Fetcher{
 		client:      client,
 		userAgent:   options.UserAgent,
