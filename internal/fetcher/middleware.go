@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"time"
 	"log"
+	"sync/atomic"
 )
 
 
@@ -13,6 +14,38 @@ type Doer interface {
 
 type LoggingMiddleware struct {
 	next Doer
+}
+
+type Metrics struct {
+	TotalRequests atomic.Int64
+	SuccessRequests atomic.Int64
+	FailedRequests atomic.Int64
+	TotalBytes atomic.Int64
+}
+
+type MetricsMiddleware struct {
+	next Doer
+	metrics *Metrics
+}
+
+func NewMetricsMiddleware(next Doer) *MetricsMiddleware{
+	return &MetricsMiddleware{
+		next : next,
+		metrics: &Metrics{},
+	}
+}
+
+func (m* MetricsMiddleware) Do(req *http.Request) (*http.Response, error){
+	m.metrics.TotalRequests.Add(1)
+	res, err := m.next.Do(req)
+	if err != nil {
+		m.metrics.FailedRequests.Add(1)
+		return nil, err
+	}
+	if res.StatusCode == http.StatusOK {
+		m.metrics.SuccessRequests.Add(1)
+	}
+	return res, nil
 }
 
 func (m *LoggingMiddleware) Do(req *http.Request) (*http.Response, error){
