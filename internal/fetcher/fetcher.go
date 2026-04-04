@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -34,6 +35,7 @@ type Fetcher struct {
 
 type HTTPError struct {
 	StatusCode int
+	RetryAfter time.Duration
 }
 
 func (e HTTPError) Error() string {
@@ -96,7 +98,15 @@ func (f *Fetcher) Fetch(urlS string) (string, error) {
 	}()
 
 	if res.StatusCode != http.StatusOK {
-		return "", &HTTPError{StatusCode: res.StatusCode}
+		retryAfter := time.Duration(0)
+		if res.StatusCode == http.StatusTooManyRequests {
+			if val := res.Header.Get("Retry-After"); val != "" {
+				if secs, err := strconv.Atoi(val); err == nil {
+					retryAfter = time.Duration(secs) * time.Second
+				}
+			}
+		}
+		return "", &HTTPError{StatusCode: res.StatusCode, RetryAfter: retryAfter}
 	}
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
