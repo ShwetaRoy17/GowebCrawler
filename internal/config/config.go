@@ -23,8 +23,8 @@ func Load() (*Config, error) {
 	viper.SetDefault("max_depth", 3)
 	viper.SetDefault("concurrency", 10)
 	viper.SetDefault("user_agent", "goWebC/1.0")
-	viper.SetDefault("rate_limit", 1)
-	viper.SetDefault("burst", 1)
+	viper.SetDefault("rate_limit", 10)
+	viper.SetDefault("burst", 6)
 
 	if err := viper.ReadInConfig(); err != nil {
 		if !errors.Is(err, viper.ConfigFileNotFoundError{}) {

@@ -87,7 +87,9 @@ func run(cfg config.Config, fetcher *fetcher.Fetcher) error {
 		wg.Wait()
 		return nil
 	}
-	return crawlerF(cfg.SeedUrl, 0)
+	err := crawlerF(cfg.SeedUrl, 0)
+	fetcher.PrintMetrics()
+	return err
 }
 
 func init() {

@@ -26,11 +26,12 @@ type Options struct {
 }
 
 type Fetcher struct {
-	client      *http.Client
+	client      Doer
 	userAgent   string
 	limiter     *rate.Limiter
 	robotsCache map[string]*robotstxt.RobotsData
 	robotsMu    sync.Mutex
+	metrics     *Metrics
 }
 
 type HTTPError struct {
@@ -52,14 +53,28 @@ func NewFetcher(options Options) *Fetcher {
 		Transport: transport,
 		Timeout:   options.Timeout,
 	}
-	
+	var doer Doer = client
+	doer = NewLoggingMiddleware(doer)
+	metrics := NewMetricsMiddleware(doer)
+	doer = metrics
+	doer = NewCompressionMiddleware(doer)
 	return &Fetcher{
-		client:      client,
+		client:      doer,
 		userAgent:   options.UserAgent,
 		limiter:     rate.NewLimiter(options.RateLimit, options.Burst),
 		robotsCache: make(map[string]*robotstxt.RobotsData),
 		robotsMu:    sync.Mutex{},
+		metrics:     metrics.metrics,
 	}
+}
+
+func (f *Fetcher) PrintMetrics() {
+	fmt.Printf("\n --------------------------- Metrics -------------------------\n")
+	fmt.Printf("Total Request: %d\n", f.metrics.TotalRequests.Load())
+	fmt.Printf("Successful Request: %d\n", f.metrics.SuccessRequests.Load())
+	fmt.Printf("Failed Request: %d\n", f.metrics.FailedRequests.Load())
+	fmt.Printf("Total Bytes Fetched: %d\n", f.metrics.TotalBytes.Load())
+	fmt.Printf("-------------------------------------------------------------\n")
 }
 
 func (f *Fetcher) Fetch(urlS string) (string, error) {
