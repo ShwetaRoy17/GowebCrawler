@@ -19,6 +19,10 @@ clean:
 lint:
 	golangci-lint run
 
+docker-build:
+	docker build -t go-crawler .
 
+docker-run:
+	docker run go-crawler start --seed $(SEED) --depth $(DEPTH)
 
 

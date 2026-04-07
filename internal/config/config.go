@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/spf13/viper"
@@ -27,7 +26,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("burst", 6)
 
 	if err := viper.ReadInConfig(); err != nil {
-		if !errors.Is(err, viper.ConfigFileNotFoundError{}) {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("failed to read config: %w", err)
 		}
 	}
