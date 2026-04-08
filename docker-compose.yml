@@ -1,9 +1,9 @@
-version: "3.9"
+
 
 services:
   crawler:
     build: .
-    command: start --seed $(SEED) --depth $(DEPTH)
+    command: start --seed https://google.com --depth 1
     environment:
       - WEBCRAWLER_CRAWLER_MAX_DEPTH=2
       - WEBCRAWLER_CRAWLER_CONCURRENCY=5
