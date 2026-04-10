@@ -37,4 +37,4 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/gowebcrawler:latest
+          tags: ghcr.io/shwetaroy17/gowebcrawler:latest
