@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webcrawler-config
+data:
+  max_depth: "2"
+  concurrency: "5"

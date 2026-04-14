@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webcrawler
+  labels:
+    app: webcrawler
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webcrawler
+  template:
+    metadata:
+      labels:
+        app: webcrawler
+    spec:
+      containers:
+        - name: webcrawler
+          image: ghcr.io/shwetaroy17/gowebcrawler:latest
+          args: ["start", "--seed", "https://golang.org", "--depth", "1"]
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 250m
+              memory: 128Mi
+          env:
+            - name: WEBCRAWLER_CRAWLER_MAX_DEPTH
+              valueFrom:
+                configMapKeyRef:
+                  name: webcrawler-config
+                  key: max_depth
