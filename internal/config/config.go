@@ -2,8 +2,10 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
+	"golang.org/x/time/rate"
 )
 
 type Config struct {
@@ -11,8 +13,9 @@ type Config struct {
 	MaxDepth    int    `mapstructure:"max_depth"`
 	Concurrency int    `mapstructure:"concurrency"`
 	UserAgent   string `mapstructure:"user_agent"`
-	RateLimit   int    `mapstructure:"rate_limit"`
+	RateLimit   rate.Limit    `mapstructure:"rate_limit"`
 	Burst       int    `mapstructure:"burst"`
+	Timeout	 time.Duration    `mapstructure:"timeout"`
 }
 
 func Load() (*Config, error) {
