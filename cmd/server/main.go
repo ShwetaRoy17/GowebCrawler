@@ -12,16 +12,25 @@ import (
 	"github.com/ShwetaRoy17/GowebCrawler/internal/parser"
 )
 
+type StartCrawlRequest struct {
+	Seed        string `json:"seed"`
+	Depth       int    `json:"depth"`
+	Concurrency int    `json:"concurrency"`
+}
+
 type JobStatus struct {
-	ID string `json:"id"`
-	Status string `json:"status"`
-	Pages int `json:"pages"`
-	Error string `json:"error,omitempty"`
+	ID          string `json:"id"`
+	Status      string `json:"status"`
+	Pages       int    `json:"pages"`
+	Error       string `json:"error,omitempty"`
+	Seed        string `json:"seed"`
+	Depth       int    `json:"depth"`
+	Concurrency int    `json:"concurrency"`
 }
 
 type Server struct {
 	jobs map[string]*JobStatus
-	mu sync.Mutex
+	mu   sync.Mutex
 }
 
 func NewServer() *Server {
@@ -31,20 +40,34 @@ func NewServer() *Server {
 }
 
 func (s *Server) handleStartCrawl(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w,"method not allowed", http.StatusMethodNotAllowed)
-	}
 
-	seed := r.URL.Query().Get("seed")
-	if seed == "" {
-		http.Error(w , "missing seed parameter", http.StatusBadRequest)
+	var req StartCrawlRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+	}
+	if req.Seed == "" {
+		http.Error(w, "missing seed parameter", http.StatusBadRequest)
 		return
 	}
 
-	jobID := fmt.Sprintf("job-%d",len(s.jobs)+1)
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	seed := req.Seed
+	if seed == "" {
+		http.Error(w, "missing seed parameter", http.StatusBadRequest)
+		return
+	}
+
+	jobID := fmt.Sprintf("job-%d", len(s.jobs)+1)
 	job := &JobStatus{
-		ID: jobID,
-		Status: "in_progress",
+		ID:          jobID,
+		Status:      "in_progress",
+		Seed:        seed,
+		Depth:       req.Depth,
+		Concurrency: req.Concurrency,
 	}
 
 	s.mu.Lock()
@@ -53,10 +76,9 @@ func (s *Server) handleStartCrawl(w http.ResponseWriter, r *http.Request) {
 
 	go s.runCrawl(job, seed)
 
-	w.Header().Set("Content-Type","application/json")
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(job)
 }
-
 
 func (s *Server) runCrawl(job *JobStatus, seed string) {
 	cfg, err := config.Load()
@@ -67,18 +89,18 @@ func (s *Server) runCrawl(job *JobStatus, seed string) {
 		s.mu.Unlock()
 		return
 	}
-	 f := fetcher.NewFetcher(fetcher.Options{
-		Timeout: cfg.Timeout,
+	f := fetcher.NewFetcher(fetcher.Options{
+		Timeout:   cfg.Timeout,
 		UserAgent: cfg.UserAgent,
 		RateLimit: cfg.RateLimit,
-		Burst: cfg.Burst,	
-	 })
+		Burst:     cfg.Burst,
+	})
 
-	 visited := make(map[string]bool)
-	 var mu sync.Mutex
+	visited := make(map[string]bool)
+	var mu sync.Mutex
 
-	 var crawl func(url string, depth int)
-	 crawl = func(urlS string, depth int){
+	var crawl func(url string, depth int)
+	crawl = func(urlS string, depth int) {
 		if depth > cfg.MaxDepth {
 			return
 		}
@@ -90,7 +112,7 @@ func (s *Server) runCrawl(job *JobStatus, seed string) {
 		visited[urlS] = true
 		mu.Unlock()
 
-		body, err := f.FetchWithRetry(urlS,3)
+		body, err := f.FetchWithRetry(urlS, 3)
 		if err != nil {
 			return
 		}
@@ -99,11 +121,11 @@ func (s *Server) runCrawl(job *JobStatus, seed string) {
 			return
 		}
 
-		links, err := parser.Parse(parsedUrl,body)
+		links, err := parser.Parse(parsedUrl, body)
 		if err != nil {
 			return
 		}
-		
+
 		mu.Lock()
 		job.Pages++
 		mu.Unlock()
@@ -111,16 +133,16 @@ func (s *Server) runCrawl(job *JobStatus, seed string) {
 			go crawl(link.URL, depth+1)
 		}
 
-	 }
+	}
 
-	 crawl(seed,0)
-	 
-	 s.mu.Lock()
-	 job.Status = "completed"
-	 s.mu.Unlock()
+	crawl(seed, 0)
+
+	s.mu.Lock()
+	job.Status = "completed"
+	s.mu.Unlock()
 }
 
-func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request){
+func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	jobID := r.URL.Query().Get("id")
 	if jobID == "" {
 		http.Error(w, "missing id parameter", http.StatusBadRequest)
@@ -137,14 +159,13 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request){
 	json.NewEncoder(w).Encode(job)
 }
 
-
-func main(){
+func main() {
 	server := NewServer()
 
 	http.HandleFunc("/start", server.handleStartCrawl)
 	http.HandleFunc("/status", server.handleStatus)
 
-	if err:= http.ListenAndServe(":8080",nil); err != nil {
-		fmt.Printf("Server error : %v\n",err)
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		fmt.Printf("Server error : %v\n", err)
 	}
 }
