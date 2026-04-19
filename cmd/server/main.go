@@ -1,19 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"sync"
 	"os"
-	"context"
+	"sync"
+	"time"
 
-	"github.com/ShwetaRoy17/GowebCrawler/internal/database"
 	"github.com/ShwetaRoy17/GowebCrawler/internal/config"
+	"github.com/ShwetaRoy17/GowebCrawler/internal/database"
 	"github.com/ShwetaRoy17/GowebCrawler/internal/fetcher"
-	"github.com/ShwetaRoy17/GowebCrawler/internal/parser"
 	"github.com/ShwetaRoy17/GowebCrawler/internal/models"
+	"github.com/ShwetaRoy17/GowebCrawler/internal/parser"
 	"github.com/joho/godotenv"
 )
 
@@ -98,59 +99,69 @@ func (s *Server) runCrawl(job *models.JobStatus, seed string) {
 		return
 	}
 	f := fetcher.NewFetcher(fetcher.Options{
-		Timeout:   cfg.Timeout,
+		Timeout:   time.Duration(cfg.TimeoutSecs) * time.Second,
 		UserAgent: cfg.UserAgent,
 		RateLimit: cfg.RateLimit,
 		Burst:     cfg.Burst,
 	})
 
-	visited := make(map[string]bool)
-	var mu sync.Mutex
+visited := make(map[string]bool)
+var mu sync.Mutex
+var wg sync.WaitGroup
+sem := make(chan struct{}, cfg.Concurrency) // ← outside crawl
 
-	var crawl func(url string, depth int)
-	crawl = func(urlS string, depth int) {
-		if depth > cfg.MaxDepth {
-			return
-		}
-		mu.Lock()
-		if visited[urlS] {
-			mu.Unlock()
-			return
-		}
-		visited[urlS] = true
-		mu.Unlock()
+var crawl func(urlS string, depth int)
+crawl = func(urlS string, depth int) {
+    if depth > cfg.MaxDepth {
+        return
+    }
+    mu.Lock()
+    if visited[urlS] {
+        mu.Unlock()
+        return
+    }
+    visited[urlS] = true
+    mu.Unlock()
 
-		body, err := f.FetchWithRetry(urlS, 3)
-		if err != nil {
-			return
-		}
-		parsedUrl, err := url.Parse(urlS)
-		if err != nil {
-			return
-		}
+    body, err := f.FetchWithRetry(urlS, 3)
+    if err != nil {
+        return
+    }
+    parsedUrl, err := url.Parse(urlS)
+    if err != nil {
+        return
+    }
+    links, err := parser.Parse(parsedUrl, body)
+    if err != nil {
+        return
+    }
 
-		links, err := parser.Parse(parsedUrl, body)
-		if err != nil {
-			return
-		}
+    mu.Lock()
+    job.Pages++
+    mu.Unlock()
 
-		mu.Lock()
-		job.Pages++
-		mu.Unlock()
-		var wg sync.WaitGroup
-		for _, link := range links {
-			wg.Add(1)
-			go crawl(link.URL, depth+1)
-		}
-		wg.Wait()
-		defer wg.Done()
-	}
+    for _, link := range links {
+        wg.Add(1)
+        sem <- struct{}{}
+        go func(li parser.Link) {
+            defer wg.Done()
+            defer func() { <-sem }()
+            crawl(li.URL, depth+1) // ← li.URL not link.URL
+        }(link)
+    }
+}
 
-	crawl(seed, 0)
+wg.Add(1)
+go func() {
+    defer wg.Done() // ← added
+    crawl(seed, 0)
+}()
 
-	s.mu.Lock()
-	job.Status = "completed"
-	s.mu.Unlock()
+wg.Wait() // ← added, waits for everything
+
+s.mu.Lock()
+job.Status = "completed"
+s.mu.Unlock()
 	if err := s.db.UpdateJob(context.Background(),job);err != nil {
 		fmt.Printf("Error updating job in database: %v\n", err)
 	}

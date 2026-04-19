@@ -15,7 +15,7 @@ type Config struct {
 	UserAgent   string `mapstructure:"user_agent"`
 	RateLimit   rate.Limit    `mapstructure:"rate_limit"`
 	Burst       int    `mapstructure:"burst"`
-	Timeout	 time.Duration    `mapstructure:"timeout"`
+	TimeoutSecs	 time.Duration    `mapstructure:"timeout"`
 }
 
 func Load() (*Config, error) {
@@ -27,6 +27,7 @@ func Load() (*Config, error) {
 	viper.SetDefault("user_agent", "goWebC/1.0")
 	viper.SetDefault("rate_limit", 10)
 	viper.SetDefault("burst", 6)
+	viper.SetDefault("timeout", 30 * time.Second)
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
