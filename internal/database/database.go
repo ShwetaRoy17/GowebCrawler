@@ -38,7 +38,7 @@ func (db *DB) CreateSchema(ctx context.Context) error {
 		seed TEXT NOT NULL,
 		depth INTEGER,
 		concurrency INTEGER,
-		created_at TIMESTAMPZ DEFAULT NOW()
+		created_at TIMESTAMPTZ DEFAULT NOW()
 	)
 `)
 return err 
@@ -87,4 +87,13 @@ func (db *DB) ListJobs(ctx context.Context) ([]*models.JobStatus, error){
 		jobs = append(jobs, job)
 	}
 	return jobs, nil
+}
+
+func (db *DB) LengthJobs(ctx context.Context) (int, error) {
+	row := db.conn.QueryRowContext(ctx, `SELECT COUNT(*) FROM jobs`)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("counting jobs: %w", err)
+	}
+	return count, nil
 }
